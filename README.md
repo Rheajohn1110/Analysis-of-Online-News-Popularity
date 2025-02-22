@@ -182,18 +182,14 @@ Lower Specificity: Some misclassification of non-popular articles.
 
 Potential Use: Content strategists can optimize article features for better reach.
 
-📌 Conclusion
+Conclusion
 
-This project provides actionable insights into online news popularity. Key takeaways:
+This project provides actionable insights into online news popularity. 
+Key takeaways:
 ✅ Weekday Publications Perform Better (Monday & Wednesday are peak days).✅ Short & Very Long Articles Perform Best in terms of engagement.✅ Images & Videos Have Minimal Impact on shares.✅ Machine Learning (SVM) Accurately Predicts Popular Articles with 95% accuracy.
 
 These insights can guide publishers & content strategists in optimizing their articles for maximum engagement and virality.
 
-📚 Future Work:
-
-Experiment with deep learning models for better predictions.
-
-Incorporate time-based trends & sentiment analysis.
 
 Explore A/B testing strategies for article optimization.
 

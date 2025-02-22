@@ -1,0 +1,257 @@
+---
+
+---
+
+[**Topic:**]{.underline} Online news popularity
+
+`r format(Sys.Date(), "%B %d, %Y")`
+
+------------------------------------------------------------------------
+
+# [**I. Introduction**]{.underline}
+
+We have chosen a dataset about Online news popularity. The dataset consists of online articles from a publishing platform with various attributes related to the content, publishing details, and audience engagement.
+
+### **Data Loading**
+
+```{r, message=FALSE}
+# Loading libraries
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(corrplot)
+library(reshape2)
+```
+
+```{r}
+# Reading the dataset
+df <- read.csv("OnlineNewsPopularity.csv")
+```
+
+------------------------------------------------------------------------
+
+# [II. **Data Exploration**]{.underline}
+
+In this section, we will thoroughly explore and clean dataset. In this exploration will include examining Our approach involves analyzing descriptive statistics to gain insights into variable distributions. We will address issues like duplicate entries, missing data, and outliers. Furthermore, we will utilize basic visualizations to enhance our understanding for the onlinenewspopularity dataset.
+
+-   [**Descriptive Statistics**]{.underline}
+
+```{r}
+str(df)
+```
+
+In this dataset has 39,644 observation of 61 variables.
+
+```{r}
+# Viewing Summary 
+df_summary <- summary(df)
+kable(df_summary, 
+      format = "html", 
+      caption = "Table 1: Summary Statistics of Online News Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+```
+
+```{r}
+# finding missing and duplicate values
+sum(duplicated(df))
+sum(is.na(df))
+```
+
+In this dataset we have 0 missing values and 0 duplicate values.
+
+```{r}
+# Checking for unique dataset 
+sapply(df, function(x) length(unique(x)))
+```
+
+-   [**Exploratory Data Analysis**]{.underline}
+
+```{r}
+# Define data channel variables
+data_channel_vars <- c("data_channel_is_lifestyle", "data_channel_is_entertainment", 
+                       "data_channel_is_bus", "data_channel_is_socmed", 
+                       "data_channel_is_tech", "data_channel_is_world")
+
+
+# Simplified names for labeling purposes
+simplified_data_channel_vars <- c("Lifestyle", "Entertainment", "Business", "Social Media", "Tech", "World")
+
+# Calculate frequencies of '1' for each original data channel variable
+freq_data_channels <- sapply(data_channel_vars, function(var) sum(df[[var]] == 1))
+
+# Create a data frame for plotting with simplified names
+plot_data <- data.frame(data_channel = simplified_data_channel_vars, frequency = freq_data_channels)
+
+# Create the bar plot using ggplot2
+ggplot(plot_data, aes(x = reorder(data_channel,-frequency) ,y = frequency)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "white") +
+  geom_text(aes(label = frequency), vjust = -0.3, color = "black", size = 2.5) +
+  labs(title = "Fig 1 Number of articles from different sources",
+       x = "Data Source", y = "Number of Articles") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+[**Interpretation for Fig 1**]{.underline}:
+
+This bar chart displays the distribution of articles across different sources. The x-axis lists the sources, which include World, Tech, Entertainment, Business, Social Media, and Lifestyle. The y-axis represents the number of articles.
+
+```{r}
+
+# Melting the data frame to long format for easier plotting with ggplot2
+long_df <- melt(df, id.vars = "shares", measure.vars = c("data_channel_is_lifestyle", 
+                                                         "data_channel_is_entertainment",
+                                                         "data_channel_is_bus",
+                                                         "data_channel_is_socmed",
+                                                         "data_channel_is_tech",
+                                                         "data_channel_is_world"))
+
+# Filtering to only include rows where the article is present in the category
+long_df <- long_df[long_df$value == 1, ]
+
+# Replacing the long names with the simplified names
+levels(long_df$variable) <- c("Lifestyle", "Entertainment", "Business", "Social Media", "Tech", "World")
+
+# Creating the box plot
+ggplot(long_df, aes(x = variable, y = shares)) +
+  geom_boxplot() +
+  labs(title = "Fig 2 Distribution of Shares by Article Category",
+       x = "Article Category",
+       y = "Number of Shares") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+[**Interpretation for Fig 2:**]{.underline}
+
+This box plot illustrates the distribution of the number of shares by article category. The categories are Lifestyle, Entertainment, Business, Social Media, Tech, and World.
+
+From the plot, we observe-
+
+-   **Lifestyle:** The distribution of shares is relatively compact with a few outliers, suggesting that most lifestyle articles receive a modest number of shares, with occasional exceptions.
+
+-   **Entertainment:** Similar to Lifestyle, Entertainment articles typically have a moderate spread in shares and exhibit outliers, indicating that certain pieces may receive significantly more attention.
+
+-   **Business:** The Business category shows a slightly wider spread in the number of shares than Lifestyle and Entertainment, hinting at greater variability in how often these articles are shared.
+
+-   **Social Media:** While the median shares are comparable to other categories, there is noticeable variability, and outliers suggest that some articles in this category can achieve very high share counts.
+
+-   **Tech:** The Tech category demonstrates a range of shares similar to Social Media, with several outliers indicating that select tech articles can gain considerable traction.
+
+-   **World:** This category not only has a wide range of shares but also the most pronounced outliers, suggesting that World news articles have the potential to be shared extensively, more so than other categories.
+
+Overall, while the median share count is similar across categories, the "World" category stands out for having articles that reach particularly high share counts, suggesting that articles in this category have the potential to go viral or gain significant attention on occasion.
+
+------------------------------------------------------------------------
+
+```{r}
+# Aggregate shares by day of the week
+shares_by_day <- df %>% 
+  mutate(day_published = case_when(
+    weekday_is_monday == 1 ~ "Monday",
+    weekday_is_tuesday == 1 ~ "Tuesday",
+    weekday_is_wednesday == 1 ~ "Wednesday",
+    weekday_is_thursday == 1 ~ "Thursday",
+    weekday_is_friday == 1 ~ "Friday",
+    weekday_is_saturday == 1 ~ "Saturday",
+    weekday_is_sunday == 1 ~ "Sunday"
+  )) %>%
+  group_by(day_published) %>%
+  summarise(total_shares = sum(shares), .groups = "drop")
+
+# Bar plot of shares by day
+ggplot(shares_by_day, aes(x = day_published, y = total_shares, fill = day_published)) +
+  geom_col() +
+  scale_y_continuous(
+    breaks = seq(0, 25000000, by = 5000000),  # breaks every 5 million
+    labels = scales::comma,  # labels formatted with commas for clarity
+    limits = c(0, 25000000)  # setting limits from 0 to 25 million
+  ) +
+  labs(title = "Fig 3 Total Shares by Day of the Week", x = "Day of the Week", y = "Total Shares") +
+  theme_minimal()
+
+```
+
+[**Fig 3 Interpretation:**]{.underline}\
+This bar chart shows the total shares of articles by day of the week. It reveals a clear pattern in which articles published on weekdays (Monday through Friday) generally receive more shares compared to those published on weekends (Saturday and Sunday). Notably, Monday and Wednesday appear to be the peak days for article shares, each with around or above 20,000,000 shares, indicating these days might be the most effective for publishing content that aims to reach the widest audience. In contrast, Saturday and Sunday show significantly fewer shares, which suggests lower engagement or readership during the weekend. This insight could be crucial for planning the timing of publishing articles to maximize visibility and engagement.
+
+------------------------------------------------------------------------
+
+```{r}
+# Role of multimedia elements in terms of Article popularity
+
+options(scipen = 999)
+
+# Scatter plot of images and shares
+ggplot(df, aes(x = num_imgs, y = shares)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm") +
+  labs(title = "Fig 4 Relationship Between Number of Images and Shares",
+       x = "Number of Images", y = "Shares")+
+  scale_y_continuous(
+    breaks = seq(0, 400000, by = 200000),  # breaks every 5 million
+    labels = scales::comma,  # labels formatted with commas for clarity
+    limits = c(0, 400000)  # setting limits from 0 to 25 million
+  )
+```
+
+[**Fig 4 Interpretation:**]{.underline}
+
+The scatter plot shows the relationship between the number of images in articles and the shares those articles receive. The data suggests that most articles contain fewer than 20 images, with those articles typically receiving up to about 100,000 shares. There is no clear trend indicating that having more images significantly increases the number of shares, as evidenced by the flat blue line (possibly a fit line) showing no strong upward trend. A cluster of articles with a small number of images tends to have a wide range of shares, suggesting factors other than the number of images might play a more significant role in influencing shares.
+
+------------------------------------------------------------------------
+
+```{r}
+
+options(scipen = 999)
+# Scatter plot of videos and shares
+ggplot(df, aes(x = num_videos, y = shares)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm") +
+  labs(title = "Fig 5 Relationship Between Number of Videos and Shares",
+       x = "Number of Videos", y = "Shares")+
+  scale_y_continuous(
+    breaks = seq(0, 400000, by = 200000),  # breaks every 5 million
+    labels = scales::comma,  # labels formatted with commas for clarity
+    limits = c(0, 400000)  # setting limits from 0 to 25 million
+  )
+
+
+```
+
+[**Fig 5 Interpretation:**]{.underline}
+
+The scatter plot illustrates the relationship between the number of videos in articles and the shares those articles receive. Similar to the previous plot with images, most articles contain very few videos, with a significant number featuring none. The presence of videos doesn't show a clear influence on increasing shares, as depicted by the nearly flat blue line across the number of videos. There are a few outliers with a moderate number of videos receiving higher shares, but these are exceptions rather than a general trend. The majority of data points are clustered at the lower end of both axes, indicating that articles with fewer or no videos are most common and their share counts vary widely, with no apparent correlation to the number of videos included.
+
+------------------------------------------------------------------------
+
+# [**III. Conclusion & Future Considerations**]{.underline}
+
+[**Buisness Questions**]{.underline}
+
+Based on this dataset, business questions we would like to answer are as follows:
+
+**1. What are the characteristics of the most shared articles?**
+
+-   **Objective**: Identify features that are common among highly shared articles.
+
+**2. How do publishing days affect article shares?**
+
+-   **Objective**: Determine if articles published on certain days of the week or weekends gain more traction.
+
+**3. How do content categories (lifestyle, entertainment, business, etc.) garner the most shares, and how do these trends vary by the day of the week or season?**
+
+-   **Objective**: Analyze the impact of content categories on article shares and identify how these trends change based on the day of the week and seasonal variations. This insight can inform the editorial calendar and strategic planning to maximize reader engagement.
+
+**4. What role do multimedia elements play in the popularity of articles?**
+
+-   **Objective**: Investigate the influence of multimedia (images and videos) on article shares.
+
+------------------------------------------------------------------------
+
+# [**IV. References**]{.underline}
+
+-   Dataset: *UCI Machine Learning Repository*. (n.d.). <https://archive.ics.uci.edu/dataset/332/online+news+popularity>
